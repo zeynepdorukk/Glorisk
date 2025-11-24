@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import Map from './components/Map';
 import AboutModal from './components/AboutModal';
-import { AlertTriangle, TrendingUp, ShieldAlert, X, Info, Newspaper, Loader2 } from 'lucide-react';
+import ReportsPanel from './components/ReportsPanel';
+import { AlertTriangle, TrendingUp, ShieldAlert, X, Info, Newspaper, Loader2, Briefcase } from 'lucide-react';
 import { calculateTotalRisk, getRiskLabel, getRiskColor } from './utils/risk';
 import { fetchCountryNews, analyzeRiskFromNews } from './services/newsService';
 
 function App() {
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [isReportsOpen, setIsReportsOpen] = useState(false);
   const [filterRisk, setFilterRisk] = useState('all');
 
   // News & Live Analysis State
@@ -77,13 +79,23 @@ function App() {
             </button>
           </div>
 
-          <button
-            onClick={() => setIsAboutOpen(true)}
-            className="p-2 hover:bg-white/10 rounded-full transition-colors text-neutral-400 hover:text-white"
-            title="About Methodology"
-          >
-            <Info size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsReportsOpen(!isReportsOpen)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all border ${isReportsOpen ? 'bg-blue-600 text-white border-blue-500 shadow-[0_0_15px_rgba(37,99,235,0.5)]' : 'bg-white/5 hover:bg-white/10 border-white/10 text-neutral-300'}`}
+            >
+              <Briefcase size={18} />
+              <span className="hidden sm:inline font-medium">Analyst Hub</span>
+            </button>
+
+            <button
+              onClick={() => setIsAboutOpen(true)}
+              className="p-2 hover:bg-white/10 rounded-full transition-colors text-neutral-400 hover:text-white"
+              title="About Methodology"
+            >
+              <Info size={20} />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -96,6 +108,7 @@ function App() {
         />
 
         <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
+        <ReportsPanel isOpen={isReportsOpen} onClose={() => setIsReportsOpen(false)} />
 
         {/* Sidebar / Overlay */}
         {selectedCountry && (
