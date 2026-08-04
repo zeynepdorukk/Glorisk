@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 
 import { RISK_BANDS, ECONOMIC_INDICATORS, GOVERNANCE_INDICATORS } from '../lib/riskModel.js';
+import { LITERATURE, doiUrl } from '../lib/literature.js';
 import { formatDate } from '../lib/format.js';
 
 function IndicatorList({ title, definitions, note }) {
@@ -172,6 +173,46 @@ export default function MethodologyModal({ open, meta, generatedAt, thresholds =
                 </div>
               ))}
             </div>
+          </section>
+
+          <section>
+            <h4 className="mb-2 text-sm font-semibold text-white">Literature</h4>
+            <ul className="space-y-3">
+              {LITERATURE.map((work) => (
+                <li key={work.id}>
+                  <a
+                    href={doiUrl(work.doi)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sky-400 hover:text-sky-300"
+                  >
+                    {work.authors} ({work.year}). {work.title}
+                  </a>
+                  <span className="text-neutral-500">. {work.venue}.</span>
+                  <span className="mt-0.5 block text-[12px] text-neutral-400">{work.role}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section>
+            <h4 className="mb-2 text-sm font-semibold text-white">Literature</h4>
+            <ul className="space-y-3">
+              {LITERATURE.map((work) => (
+                <li key={work.id}>
+                  <a
+                    href={doiUrl(work.doi)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sky-400 hover:text-sky-300"
+                  >
+                    {work.authors} ({work.year}). {work.title}
+                  </a>
+                  <span className="text-neutral-500">. {work.venue}.</span>
+                  <span className="mt-0.5 block text-[12px] text-neutral-400">{work.role}</span>
+                </li>
+              ))}
+            </ul>
           </section>
 
           <section>

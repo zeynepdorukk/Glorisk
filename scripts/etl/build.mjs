@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { fetchCountries, fetchIndicator } from './worldbank.mjs';
 import { displayName } from './displayNames.mjs';
 import { buildDiagnostics } from './diagnostics.mjs';
+import { buildValidation } from './validation.mjs';
 import {
   ECONOMIC_INDICATORS,
   GOVERNANCE_INDICATORS,
@@ -189,6 +190,11 @@ async function main() {
       `weight sensitivity median rho=${diagnostics.weightSensitivity?.median}`,
   );
 
+  const validation = await buildValidation(countries, { maxYear: CURRENT_YEAR });
+  const summarise = (checks) => checks.map((check) => `${check.label}=${check.rho}`).join(' ');
+  log(`validation convergent: ${summarise(validation.convergent)}`);
+  log(`validation criterion: ${summarise(validation.criterion)}`);
+
   await fs.mkdir(HISTORY_DIR, { recursive: true });
   await fs.writeFile(
     path.join(OUT_DIR, 'countries.json'),
@@ -204,6 +210,7 @@ async function main() {
       governanceIndicators: GOVERNANCE_INDICATORS,
       references,
       diagnostics,
+      validation,
       sources: [
         { name: 'World Bank Open Data', url: 'https://data.worldbank.org', description: 'Macro-economic indicators.' },
         { name: 'Worldwide Governance Indicators', url: 'https://www.worldbank.org/en/publication/worldwide-governance-indicators', description: 'Governance scores, regions and income groups.' },

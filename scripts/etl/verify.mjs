@@ -89,6 +89,21 @@ check(
   'meta.json is missing the weight sensitivity diagnostic',
 );
 
+const validationChecks = [...(meta.validation?.convergent ?? []), ...(meta.validation?.criterion ?? [])];
+check(validationChecks.length >= 5, 'meta.json is missing the external validation results');
+for (const entry of validationChecks) {
+  check(Number.isFinite(entry.rho), `validation "${entry.label}" produced no correlation`);
+  check(entry.rho >= -1 && entry.rho <= 1, `validation "${entry.label}": rho ${entry.rho} out of range`);
+  check(entry.countries >= 100, `validation "${entry.label}": only ${entry.countries} countries matched`);
+}
+// The governance pillar agreeing with independent expert coding is the whole
+// point of the check; a collapse here means something upstream broke.
+const governanceCheck = meta.validation?.convergent?.find((entry) => entry.label === 'Governance pillar');
+check(
+  (governanceCheck?.rho ?? 0) >= 0.6,
+  `governance pillar only correlates with V-Dem at ${governanceCheck?.rho}`,
+);
+
 if (failures.length > 0) {
   console.error(`[verify] ${failures.length} problem(s) found:`);
   for (const failure of failures) console.error(`  - ${failure}`);

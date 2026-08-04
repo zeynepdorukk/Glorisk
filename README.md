@@ -34,12 +34,48 @@ own checks.
 
 The two-pillar split carries the argument. Political risk and economic risk get
 spoken about as one thing, and the data says they are not: across 200 countries
-the two pillars correlate at r 0.02. Russia and Greece land six points apart on
-the composite and are near mirror images underneath — Russia 34 economic against
-82 governance, Greece 69 against 36. One number hides that; two do not. Rather
-than settle which pillar matters more — a question with no data-driven answer —
-the header has a slider, so the weighting is a choice the reader makes and
-watches take effect, not an assumption buried in the code.
+the two pillars correlate at **r 0.02**. Russia and Greece land six points apart
+on the composite and are near mirror images underneath — Russia 34 economic
+against 82 governance, Greece 69 against 36. One number hides that; two do not.
+Rather than settle which pillar matters more — a question with no data-driven
+answer — the header has a slider, so the weighting is a choice the reader makes
+and watches take effect, not an assumption buried in the code.
+
+The site puts that argument in front of the reader rather than in a footnote:
+**Findings** plots every country on the two pillars, and if they measured the
+same thing the cloud would be a line.
+
+## Does any of it hold up?
+
+A composite can be internally tidy and still measure nothing, so two independent
+checks run on every build, against sources this project does not control.
+Spearman rank correlations, latest observation per country:
+
+| Convergent — against V-Dem, expert-coded rather than survey-aggregated | ρ |
+| --- | ---: |
+| Voice and accountability ↔ liberal democracy index | 0.96 |
+| Control of corruption ↔ political corruption index | 0.91 |
+| Rule of law ↔ rule of law index | 0.89 |
+| Governance pillar ↔ rule of law index | 0.88 |
+
+| Criterion — against an outcome: conflict deaths per 100k (UCDP) | ρ |
+| --- | ---: |
+| Political stability component | 0.63 |
+| Composite risk | 0.42 |
+| Economic pillar | −0.04 |
+
+The second table is the interesting one. The stability component tracks actual
+conflict deaths; the economic pillar has no relationship with them at all. That
+is the orthogonality argument again, confirmed against something outside the
+model entirely — and a warning that the composite is a worse predictor of
+violence than one of its own components, so a single risk number is the wrong
+tool for that question.
+
+It also answers the standing objection to the governance inputs. The WGI pool
+perception-based sources, and the literature asks whether they measure what they
+claim (Thomas 2010) or merely what informed observers believe (Oman & Arndt
+2006). Agreement with expert coding at ρ 0.88, and with an outcome nobody had to
+form an opinion about, is the answer available to a project built on public data.
 
 ## The score
 
@@ -84,14 +120,14 @@ country's trajectory only moves when *it* changes, not when its peers do.
 Nothing says political stability deserves 35% and regulatory quality 5%. Where
 there is no theoretical or statistical basis for differential weights, the
 standard practice for composite indicators is equal weighting published together
-with a sensitivity analysis — so the pipeline computes one on every run and the
-app shows it:
+with a sensitivity analysis (OECD & JRC 2008) — so the pipeline computes one on
+every run and the app shows it:
 
 | Diagnostic | Value | Reading |
 | --- | ---: | --- |
 | Rank stability under 500 random weightings | ρ 0.98 | Perturbing every weight by ±50% and the blend between 35-65% barely moves the ranking. The weights are not doing the work. |
 | Correlation between the two pillars | r 0.02 | The economic and governance pillars carry independent information; both earn their place. |
-| Mean pairwise correlation inside the governance pillar | r 0.82 | The six WGI measures largely track one construct — rule of law and control of corruption correlate at 0.95. Averaging them estimates that construct more reliably, but it is not six independent readings, and the app says so. |
+| Mean pairwise correlation inside the governance pillar | r 0.82 | The six WGI measures largely track one construct — rule of law and control of corruption correlate at 0.95. This is the Langbein & Knack (2010) result, reproduced on current data. Averaging them estimates that construct more reliably, but it is not six independent readings, and the app says so. |
 | Mean pairwise correlation inside the economic pillar | r 0.05 | These six really are separate signals. |
 
 ### Missing data is the hard part
@@ -137,6 +173,7 @@ scripts/etl/
   worldbank.mjs   paginated API client with retries
   build.mjs       scores 210 countries, writes public/data/*
   diagnostics.mjs redundancy and weight-sensitivity analysis
+  validation.mjs  external checks against V-Dem and UCDP
   verify.mjs      refuses to publish a broken dataset
 scripts/branding/
   build-icons.mjs renders the favicon and PNG icons from public/logo.svg
@@ -193,7 +230,9 @@ npm run icons       # regenerate favicon.ico and the PNG icons from the logo
 The tests cover the parts where a silent mistake would be invisible on screen:
 percentile placement against a skewed reference, ties resolving to the middle of
 a flat stretch rather than to the end of the scale, coverage arithmetic when
-indicators are missing, and quantile interpolation for the band cut-offs.
+indicators are missing, quantile interpolation for the band cut-offs, and the
+rank correlation used for validation — where conflict deaths are mostly zero, so
+ties dominate and a naive formula would be wrong.
 
 ## Brand
 
@@ -239,8 +278,17 @@ always there.
 
 - [World Bank Open Data](https://data.worldbank.org) — macro-economic indicators
 - [Worldwide Governance Indicators](https://www.worldbank.org/en/publication/worldwide-governance-indicators) — governance scores, regions, income groups
+- [V-Dem](https://ourworldindata.org/grapher/rule-of-law-index) and [UCDP](https://ourworldindata.org/grapher/death-rate-in-armed-conflicts), via Our World in Data — external validation only, never part of the score
 - Basemap tiles © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, © [CARTO](https://carto.com/attributions)
 - Flags from [flagcdn.com](https://flagcdn.com)
+
+## Literature
+
+- Kaufmann, D., Kraay, A. & Mastruzzi, M. (2010). [The Worldwide Governance Indicators: Methodology and Analytical Issues](https://doi.org/10.1596/1813-9450-5430). *World Bank Policy Research Working Paper 5430.* — how the governance inputs are constructed.
+- Langbein, L. & Knack, S. (2010). [The Worldwide Governance Indicators: Six, One, or None?](https://doi.org/10.1080/00220380902952399) *Journal of Development Studies* 46(2), 350–370. — the six measures are not empirically distinct; the redundancy diagnostic here reproduces it at r 0.82.
+- Thomas, M. A. (2010). [What Do the Worldwide Governance Indicators Measure?](https://doi.org/10.1057/ejdr.2009.32) *The European Journal of Development Research* 22(1), 31–54. — construct validity; the external checks are the response.
+- Oman, C. & Arndt, C. (2006). [Uses and Abuses of Governance Indicators](https://doi.org/10.1787/9789264026865-en). *OECD Development Centre Studies.* — perception bias and comparability over time.
+- OECD & Joint Research Centre (2008). [Handbook on Constructing Composite Indicators](https://doi.org/10.1787/9789264043466-en). — normalisation, equal weighting, and publishing a sensitivity analysis.
 
 ---
 

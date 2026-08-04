@@ -3,6 +3,7 @@ import { Info, Layers, List, Loader2, Search, TriangleAlert } from 'lucide-react
 
 import CountryPanel from './components/CountryPanel.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import FindingsModal from './components/FindingsModal.jsx';
 import Legend from './components/Legend.jsx';
 import Logo from './components/Logo.jsx';
 import MapView from './components/MapView.jsx';
@@ -45,6 +46,7 @@ export default function App() {
   const [urlState, setUrlState] = useUrlState();
   const [searchOpen, setSearchOpen] = useState(false);
   const [methodologyOpen, setMethodologyOpen] = useState(false);
+  const [findingsOpen, setFindingsOpen] = useState(false);
   const [rankingOpen, setRankingOpen] = useState(false);
   const [basemap, setBasemap] = useState('dark');
   const isDesktop = useMediaQuery('(min-width: 1024px)');
@@ -73,14 +75,14 @@ export default function App() {
       if ((event.key === 'k' && (event.metaKey || event.ctrlKey)) || (event.key === '/' && !typing)) {
         event.preventDefault();
         setSearchOpen(true);
-      } else if (event.key === 'Escape' && !searchOpen && !methodologyOpen) {
+      } else if (event.key === 'Escape' && !searchOpen && !methodologyOpen && !findingsOpen) {
         if (rankingOpen) setRankingOpen(false);
         else if (urlState.countryId) clearSelection();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [searchOpen, methodologyOpen, rankingOpen, urlState.countryId, clearSelection]);
+  }, [searchOpen, methodologyOpen, findingsOpen, rankingOpen, urlState.countryId, clearSelection]);
 
   if (status === 'loading') return <LoadingScreen />;
   if (status === 'error') return <ErrorScreen error={error} />;
@@ -92,6 +94,8 @@ export default function App() {
       bandFilter={urlState.band}
       onSelect={selectCountry}
       onOpenSearch={() => setSearchOpen(true)}
+      onOpenFindings={() => setFindingsOpen(true)}
+      pillarCorrelation={meta?.diagnostics?.betweenPillars}
     />
   );
 
@@ -124,6 +128,13 @@ export default function App() {
             />
           </div>
 
+          <button
+            type="button"
+            onClick={() => setFindingsOpen(true)}
+            className="rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-neutral-300 transition hover:border-white/25 hover:bg-white/5 hover:text-white"
+          >
+            Findings
+          </button>
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
@@ -217,6 +228,14 @@ export default function App() {
         generatedAt={generatedAt}
         thresholds={thresholds}
         onClose={() => setMethodologyOpen(false)}
+      />
+      <FindingsModal
+        open={findingsOpen}
+        countries={countries}
+        meta={meta}
+        selectedId={urlState.countryId}
+        onSelect={selectCountry}
+        onClose={() => setFindingsOpen(false)}
       />
 
       <p className="sr-only" aria-live="polite">

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowDownWideNarrow, ArrowUpNarrowWide, Search } from 'lucide-react';
+import { ArrowDownWideNarrow, ArrowUpNarrowWide, Lightbulb, Search } from 'lucide-react';
 
 import Sparkline from './Sparkline.jsx';
 
@@ -8,7 +8,15 @@ const SORTS = {
   safest: { label: 'Safest first', compare: (a, b) => a.score - b.score, icon: ArrowUpNarrowWide },
 };
 
-export default function RankingPanel({ countries, selectedId, bandFilter, onSelect, onOpenSearch }) {
+export default function RankingPanel({
+  countries,
+  selectedId,
+  bandFilter,
+  onSelect,
+  onOpenSearch,
+  onOpenFindings,
+  pillarCorrelation,
+}) {
   const [sort, setSort] = useState('riskiest');
   const [region, setRegion] = useState('all');
 
@@ -30,6 +38,25 @@ export default function RankingPanel({ countries, selectedId, bandFilter, onSele
   return (
     <div className="flex h-full flex-col">
       <div className="space-y-3 border-b border-white/10 p-4">
+        <button
+          type="button"
+          onClick={onOpenFindings}
+          className="group flex w-full items-start gap-2.5 rounded-lg border border-sky-500/20 bg-gradient-to-br from-sky-500/10 to-violet-500/10 px-3 py-2.5 text-left transition hover:border-sky-500/40"
+        >
+          <Lightbulb size={15} className="mt-0.5 shrink-0 text-amber-400" />
+          <span className="min-w-0">
+            <span className="block text-[12px] font-medium leading-snug text-white">
+              Political and economic risk barely overlap
+              {pillarCorrelation !== undefined && pillarCorrelation !== null && (
+                <span className="font-mono text-sky-300"> (r {pillarCorrelation})</span>
+              )}
+            </span>
+            <span className="mt-0.5 block text-[11px] text-neutral-400 group-hover:text-neutral-300">
+              See what the data shows →
+            </span>
+          </span>
+        </button>
+
         <button
           type="button"
           onClick={onOpenSearch}
