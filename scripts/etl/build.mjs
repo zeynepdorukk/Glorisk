@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 import { fetchCountries, fetchIndicator } from './worldbank.mjs';
 import { displayName } from './displayNames.mjs';
+import { buildDiagnostics } from './diagnostics.mjs';
 import {
   ECONOMIC_INDICATORS,
   GOVERNANCE_INDICATORS,
@@ -20,8 +21,9 @@ import {
   MIN_ECONOMIC_COVERAGE,
   MIN_GOVERNANCE_COVERAGE,
   confidenceLevel,
+  pillarScore,
+  referenceDistribution,
   scoreIndicator,
-  weightedScore,
   totalRisk,
 } from '../../src/lib/riskModel.js';
 
@@ -33,6 +35,8 @@ const CURRENT_YEAR = new Date().getUTCFullYear();
 const FROM_YEAR = CURRENT_YEAR - 11;
 
 const log = (...parts) => console.log('[etl]', ...parts);
+
+const ALL_INDICATORS = [...ECONOMIC_INDICATORS, ...GOVERNANCE_INDICATORS];
 
 function latestPoint(points) {
   if (!points || points.length === 0) return null;
@@ -48,46 +52,61 @@ function valueAtYear(points, year) {
   return null;
 }
 
-/** Builds one pillar (economic or governance) for a single country. */
-function buildPillar(definitions, seriesByCode, iso3, toScore) {
+/**
+ * One reference distribution per indicator, pooled over every country and every
+ * year in range. Pooling rather than scoring against each year's cross-section
+ * keeps the trajectories comparable: a country only moves because it changed,
+ * not because its peers did.
+ */
+function buildReferences(seriesByCode) {
+  const references = {};
+  for (const definition of ALL_INDICATORS) {
+    const values = [];
+    for (const points of seriesByCode.get(definition.code)?.values() ?? []) {
+      for (const point of points) values.push(point.value);
+    }
+    references[definition.key] = referenceDistribution(values);
+  }
+  return references;
+}
+
+function buildPillar(definitions, seriesByCode, references, iso3, minCoverage) {
   const components = {};
-  const parts = [];
+  const scores = [];
   let latestYear = null;
 
   for (const definition of definitions) {
     const points = seriesByCode.get(definition.code)?.get(iso3) ?? null;
     const latest = latestPoint(points);
-    const score = latest ? toScore(latest.value, definition) : null;
+    const score = latest ? scoreIndicator(latest.value, references[definition.key], definition.direction) : null;
     components[definition.key] = latest
       ? { value: Number(latest.value.toFixed(2)), year: latest.year, score: Number(score.toFixed(1)) }
       : null;
-    parts.push({ score, weight: definition.weight });
+    scores.push(score);
     if (latest && (latestYear === null || latest.year > latestYear)) latestYear = latest.year;
   }
 
-  const { score, coverage } = weightedScore(parts);
+  const { score, coverage } = pillarScore(scores);
   return {
     score: score === null ? null : Number(score.toFixed(1)),
     coverage: Number(coverage.toFixed(2)),
+    // Gated on the exact ratio: two of six indicators must not fail on rounding.
+    usable: score !== null && coverage >= minCoverage,
     year: latestYear,
     components,
   };
 }
 
-/** Recomputes both pillars for a specific year so we can chart the trajectory. */
-function pillarScoreForYear(definitions, seriesByCode, iso3, year, toScore) {
-  const parts = definitions.map((definition) => {
+/** Recomputes a pillar for one year so the trajectory can be charted. */
+function pillarScoreForYear(definitions, seriesByCode, references, iso3, year) {
+  const scores = definitions.map((definition) => {
     const value = valueAtYear(seriesByCode.get(definition.code)?.get(iso3), year);
-    return { score: value === null ? null : toScore(value, definition), weight: definition.weight };
+    return value === null ? null : scoreIndicator(value, references[definition.key], definition.direction);
   });
-  const { score, coverage } = weightedScore(parts);
-  // Ignore years where we barely have any data - they produce misleading jumps.
+  const { score, coverage } = pillarScore(scores);
+  // Years with barely any data produce misleading jumps.
   return coverage >= 0.5 ? score : null;
 }
-
-const economicScorer = (value, definition) => scoreIndicator(value, definition.scale);
-// Governance percentiles are 0-100 where higher means better governed.
-const governanceScorer = (value) => 100 - Math.min(100, Math.max(0, value));
 
 async function fetchAllSeries(definitions, source) {
   const entries = new Map();
@@ -109,35 +128,39 @@ function percentileRanks(countries) {
 async function main() {
   log(`building data for ${FROM_YEAR}-${CURRENT_YEAR}`);
 
-  const [countryMeta, economicSeries, governanceSeries] = [
-    await fetchCountries(),
-    await fetchAllSeries(ECONOMIC_INDICATORS, undefined),
-    await fetchAllSeries(GOVERNANCE_INDICATORS, 3),
-  ];
+  const countryMeta = await fetchCountries();
+  const economicSeries = await fetchAllSeries(ECONOMIC_INDICATORS, undefined);
+  const governanceSeries = await fetchAllSeries(GOVERNANCE_INDICATORS, 3);
   log(`${countryMeta.length} countries in scope`);
+
+  const allSeries = new Map([...economicSeries, ...governanceSeries]);
+  const references = buildReferences(allSeries);
+  log(
+    'reference distributions: ' +
+      ALL_INDICATORS.map((d) => `${d.key}=${references[d.key]?.count ?? 0}`).join(' '),
+  );
 
   const years = Array.from({ length: CURRENT_YEAR - FROM_YEAR + 1 }, (_, i) => FROM_YEAR + i);
   const countries = [];
   const histories = new Map();
 
   for (const meta of countryMeta) {
-    const economic = buildPillar(ECONOMIC_INDICATORS, economicSeries, meta.id, economicScorer);
-    const governance = buildPillar(GOVERNANCE_INDICATORS, governanceSeries, meta.id, governanceScorer);
-
-    economic.usable = economic.score !== null && economic.coverage >= MIN_ECONOMIC_COVERAGE;
-    governance.usable = governance.score !== null && governance.coverage >= MIN_GOVERNANCE_COVERAGE;
+    const economic = buildPillar(ECONOMIC_INDICATORS, economicSeries, references, meta.id, MIN_ECONOMIC_COVERAGE);
+    const governance = buildPillar(GOVERNANCE_INDICATORS, governanceSeries, references, meta.id, MIN_GOVERNANCE_COVERAGE);
     if (!economic.usable && !governance.usable) continue;
 
     const total = totalRisk(
       economic.usable ? economic.score : null,
       governance.usable ? governance.score : null,
     );
-    const confidence = confidenceLevel(economic.coverage, governance.coverage);
+    const confidence = confidenceLevel(economic, governance);
+
     const trajectory = years
       .map((year) => {
-        const economicYear = pillarScoreForYear(ECONOMIC_INDICATORS, economicSeries, meta.id, year, economicScorer);
-        const governanceYear = pillarScoreForYear(GOVERNANCE_INDICATORS, governanceSeries, meta.id, year, governanceScorer);
-        const value = totalRisk(economicYear, governanceYear);
+        const value = totalRisk(
+          pillarScoreForYear(ECONOMIC_INDICATORS, economicSeries, references, meta.id, year),
+          pillarScoreForYear(GOVERNANCE_INDICATORS, governanceSeries, references, meta.id, year),
+        );
         return value === null ? null : [year, Number(value.toFixed(1))];
       })
       .filter(Boolean);
@@ -155,9 +178,8 @@ async function main() {
     });
 
     const history = {};
-    for (const definition of [...ECONOMIC_INDICATORS, ...GOVERNANCE_INDICATORS]) {
-      const seriesMap = ECONOMIC_INDICATORS.includes(definition) ? economicSeries : governanceSeries;
-      const points = seriesMap.get(definition.code)?.get(meta.id);
+    for (const definition of ALL_INDICATORS) {
+      const points = allSeries.get(definition.code)?.get(meta.id);
       if (points?.length) history[definition.key] = points.map((point) => [point.year, Number(point.value.toFixed(2))]);
     }
     histories.set(meta.id, history);
@@ -166,6 +188,14 @@ async function main() {
   percentileRanks(countries);
   countries.sort((a, b) => a.name.localeCompare(b.name));
   log(`scored ${countries.length} countries`);
+
+  const diagnostics = buildDiagnostics(countries, ECONOMIC_INDICATORS, GOVERNANCE_INDICATORS);
+  log(
+    `diagnostics: governance mean r=${diagnostics.governance.meanCorrelation}, ` +
+      `economic mean r=${diagnostics.economic.meanCorrelation}, ` +
+      `between pillars r=${diagnostics.betweenPillars}, ` +
+      `weight sensitivity median rho=${diagnostics.weightSensitivity?.median}`,
+  );
 
   await fs.mkdir(HISTORY_DIR, { recursive: true });
   await fs.writeFile(
@@ -180,6 +210,8 @@ async function main() {
       countryCount: countries.length,
       economicIndicators: ECONOMIC_INDICATORS,
       governanceIndicators: GOVERNANCE_INDICATORS,
+      references,
+      diagnostics,
       sources: [
         { name: 'World Bank Open Data', url: 'https://data.worldbank.org', description: 'Macro-economic indicators.' },
         { name: 'Worldwide Governance Indicators', url: 'https://www.worldbank.org/en/publication/worldwide-governance-indicators', description: 'Governance scores, regions and income groups.' },

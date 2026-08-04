@@ -18,24 +18,54 @@ the last decade.
 
 Two pillars, twelve indicators, one number between 0 and 100.
 
-| Economic pillar · World Bank | Weight | Governance pillar · WGI | Weight |
-| --- | ---: | --- | ---: |
-| Inflation | 25% | Political stability | 35% |
-| GDP growth | 20% | Rule of law | 20% |
-| Unemployment | 15% | Control of corruption | 15% |
-| Government debt | 15% | Government effectiveness | 15% |
-| Current account | 15% | Voice and accountability | 10% |
-| Reserves cover | 10% | Regulatory quality | 5% |
+| Economic pillar · World Bank | Governance pillar · WGI |
+| --- | --- |
+| Inflation | Political stability |
+| GDP growth | Rule of law |
+| Unemployment | Control of corruption |
+| Government debt | Government effectiveness |
+| Current account | Voice and accountability |
+| Reserves cover | Regulatory quality |
 
-Each indicator is mapped onto a 0-100 risk scale between a *best* and a *worst*
-anchor — 2% inflation scores 0, 50% scores 100, anything beyond is clamped. The
-indicators are averaged with the weights above, and the two pillars are blended
-50/50 into the composite. That last ratio is a judgement call, so it is a slider
-in the header rather than a constant: drag it and the map, the ranking and the
-colour bands all recompute.
+Every observation becomes a **percentile rank** against a reference distribution
+pooled over every country and every year in the dataset — roughly two thousand
+country-years per indicator. The ranks are averaged into the two pillars, and the
+pillars are blended 50/50 into the composite. That last ratio is the one real
+judgement call, so it is a slider in the header rather than a constant: drag it
+and the map, the ranking and the colour bands all recompute.
 
 The whole model lives in [`src/lib/riskModel.js`](src/lib/riskModel.js), which
 both the pipeline and the browser import, so the numbers can never drift apart.
+
+### Percentiles, not hand-picked thresholds
+
+An earlier version normalised each indicator between anchors I chose: 2%
+inflation scores zero, 50% scores a hundred. That is an opinion dressed as a
+measurement, and it behaves badly on skewed data — a handful of hyperinflation
+years drags everyone else into the bottom of the scale, and every country above
+the upper anchor collapses to the same value.
+
+Percentile ranks ask a question the data can answer on its own: where does this
+sit among the two thousand country-years on record? They are robust to outliers,
+they need no thresholds, and they put all twelve indicators on the same footing,
+which is what makes averaging them defensible in the first place. The reference
+distribution is pooled across years rather than recomputed per year, so a
+country's trajectory only moves when *it* changes, not when its peers do.
+
+### Equal weights, and the evidence for them
+
+Nothing says political stability deserves 35% and regulatory quality 5%. Where
+there is no theoretical or statistical basis for differential weights, the
+standard practice for composite indicators is equal weighting published together
+with a sensitivity analysis — so the pipeline computes one on every run and the
+app shows it:
+
+| Diagnostic | Value | Reading |
+| --- | ---: | --- |
+| Rank stability under 500 random weightings | ρ 0.98 | Perturbing every weight by ±50% and the blend between 35-65% barely moves the ranking. The weights are not doing the work. |
+| Correlation between the two pillars | r 0.02 | The economic and governance pillars carry independent information; both earn their place. |
+| Mean pairwise correlation inside the governance pillar | r 0.82 | The six WGI measures largely track one construct — rule of law and control of corruption correlate at 0.95. Averaging them estimates that construct more reliably, but it is not six independent readings, and the app says so. |
+| Mean pairwise correlation inside the economic pillar | r 0.05 | These six really are separate signals. |
 
 ### Missing data is the hard part
 
@@ -44,15 +74,14 @@ quietly corrupting the ranking:
 
 - **Stale observations are dropped.** Anything older than six years counts as
   missing, so a 2018 debt figure cannot drive a 2026 score.
-- **Weights are redistributed, and the loss is reported.** If government debt is
-  unpublished, its 15% is spread over the remaining indicators and the country's
-  *coverage* falls to 85%. The panel shows that figure.
-- **A thin pillar is dropped, not the country.** Below 35% economic or 50%
-  governance coverage a pillar stops counting toward the headline score. If only
-  one pillar survives, the country is still scored and ranked, but flagged
-  *limited data* — an amber dot in the ranking and a badge in the panel. Yemen,
-  Eritrea and North Korea are all in that group; silently dropping them would
-  have left the map's worst cases blank.
+- **The loss is reported, not hidden.** A pillar is the mean of whichever
+  indicators exist, and the share that survived is published as *coverage*.
+- **A thin pillar is dropped, not the country.** A pillar needs a third of its
+  economic indicators, or half of its governance indicators, to count toward the
+  headline score. If only one pillar survives, the country is still scored and
+  ranked but flagged *limited data* — an amber dot in the ranking and a badge in
+  the panel. North Korea and Eritrea are in that group; silently dropping them
+  would blank out part of the map's worst quarter.
 
 An earlier version simply excluded any country that failed the gates. It removed
 Yemen, Syria, Venezuela, Myanmar and North Korea — which is a strange thing for a
@@ -60,13 +89,12 @@ risk map to do.
 
 ### Why the colours are quintiles
 
-Composite scores cluster: the WGI 0-100 score is a linear rescaling of an
-estimate that itself sits in a narrow band, and most countries end up between 20
-and 50. With fixed cut-offs at 20/40/60/80 the entire world came out one shade of
-green. So the five bands are **global quintiles of the current blend** — each
-band always holds a fifth of the scored countries, and the legend shows the score
-range each one currently spans. Move the pillar slider and the thresholds move
-with it.
+Composite scores cluster toward the middle: averaging twelve percentile ranks
+pulls countries in, and with fixed cut-offs at 20/40/60/80 most of the world came
+out one shade. So the five bands are **global quintiles of the current blend** —
+each band always holds a fifth of the scored countries, and the legend shows the
+score range each one currently spans. Move the pillar slider and the thresholds
+move with it.
 
 ![Filtering to the riskiest fifth](docs/screenshot-world.png)
 
@@ -81,6 +109,7 @@ for the CDN, and immune to someone else's rate limit.
 scripts/etl/
   worldbank.mjs   paginated API client with retries
   build.mjs       scores 210 countries, writes public/data/*
+  diagnostics.mjs redundancy and weight-sensitivity analysis
   verify.mjs      refuses to publish a broken dataset
 scripts/branding/
   build-icons.mjs renders the favicon and PNG icons from public/logo.svg
@@ -135,8 +164,9 @@ npm run icons       # regenerate favicon.ico and the PNG icons from the logo
 ```
 
 The tests cover the parts where a silent mistake would be invisible on screen:
-anchor clamping, weight redistribution when indicators are missing, quantile
-interpolation, and the guarantee that each pillar's weights sum to one.
+percentile placement against a skewed reference, ties resolving to the middle of
+a flat stretch rather than to the end of the scale, coverage arithmetic when
+indicators are missing, and quantile interpolation for the band cut-offs.
 
 ## Brand
 
@@ -162,10 +192,11 @@ This is an open-data project, not an investment or travel advisory.
 
 Governance indicators are published once a year and lag reality — the WGI figures
 for a country at war can look surprisingly unremarkable. Macro statistics get
-revised. Anchor values are defensible but not neutral: choosing 50% inflation as
-"worst" is a decision, and a different choice reorders the middle of the table.
-And a single number can say that a country is risky without ever saying why, which
-is the whole reason the panel exposes the components.
+revised. Percentile ranks are robust but ordinal: they say a country is in the
+worst 5% for inflation, not by how much, so the panel keeps the raw value and its
+year next to every score. And averaging the two pillars is fully compensatory —
+strong institutions offset a failing economy in the arithmetic, which is the main
+reason the components stay visible rather than hidden behind one number.
 
 A live news layer was built on GDELT and then removed. The API refuses shared
 addresses, so the scheduled harvest returned almost nothing; it omits CORS headers

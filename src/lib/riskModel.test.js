@@ -7,52 +7,86 @@ import {
   bandFor,
   bandThresholds,
   confidenceLevel,
+  percentileOf,
+  pillarScore,
   quantile,
+  referenceDistribution,
   scoreIndicator,
   totalRisk,
-  weightedScore,
 } from './riskModel.js';
 
-describe('scoreIndicator', () => {
-  const inflation = ECONOMIC_INDICATORS.find((i) => i.key === 'inflation').scale;
-  const growth = ECONOMIC_INDICATORS.find((i) => i.key === 'growth').scale;
+const uniform = referenceDistribution(Array.from({ length: 1001 }, (_, i) => i / 10));
 
-  it('maps the best anchor to zero risk and the worst anchor to full risk', () => {
-    expect(scoreIndicator(2, inflation)).toBe(0);
-    expect(scoreIndicator(50, inflation)).toBe(100);
+describe('referenceDistribution', () => {
+  it('condenses a sample into one breakpoint per percentile', () => {
+    expect(uniform.breakpoints).toHaveLength(101);
+    expect(uniform.count).toBe(1001);
+    expect(uniform.breakpoints[0]).toBe(0);
+    expect(uniform.breakpoints[100]).toBe(100);
   });
 
-  it('handles indicators where lower values are riskier', () => {
-    expect(scoreIndicator(6, growth)).toBe(0);
-    expect(scoreIndicator(-5, growth)).toBe(100);
-    expect(scoreIndicator(0.5, growth)).toBeCloseTo(50, 5);
-  });
-
-  it('clamps values beyond the anchors', () => {
-    expect(scoreIndicator(500, inflation)).toBe(100);
-    expect(scoreIndicator(-10, inflation)).toBe(0);
-  });
-
-  it('returns null for missing observations', () => {
-    expect(scoreIndicator(null, inflation)).toBeNull();
-    expect(scoreIndicator(undefined, inflation)).toBeNull();
-    expect(scoreIndicator(Number.NaN, inflation)).toBeNull();
+  it('ignores non-numeric observations', () => {
+    expect(referenceDistribution([1, Number.NaN, 3]).count).toBe(2);
+    expect(referenceDistribution([])).toBeNull();
   });
 });
 
-describe('weightedScore', () => {
-  it('renormalises the weights over the components that have data', () => {
-    const result = weightedScore([
-      { score: 100, weight: 0.5 },
-      { score: 0, weight: 0.25 },
-      { score: null, weight: 0.25 },
-    ]);
-    expect(result.score).toBeCloseTo(66.6667, 3);
-    expect(result.coverage).toBeCloseTo(0.75, 5);
+describe('percentileOf', () => {
+  it('places a value at its rank in the distribution', () => {
+    expect(percentileOf(uniform.breakpoints, 50)).toBeCloseTo(50, 1);
+    expect(percentileOf(uniform.breakpoints, 25)).toBeCloseTo(25, 1);
   });
 
-  it('reports no score when every component is missing', () => {
-    expect(weightedScore([{ score: null, weight: 1 }])).toEqual({ score: null, coverage: 0 });
+  it('clamps values outside the observed range', () => {
+    expect(percentileOf(uniform.breakpoints, -1000)).toBe(0);
+    expect(percentileOf(uniform.breakpoints, 1000)).toBe(100);
+  });
+
+  it('resolves a flat stretch to its midpoint instead of an edge', () => {
+    const flat = referenceDistribution([...Array(80).fill(5), ...Array(20).fill(9)]);
+    const position = percentileOf(flat.breakpoints, 5);
+    expect(position).toBeGreaterThan(0);
+    expect(position).toBeLessThan(80);
+  });
+
+  it('is monotonic over a skewed sample', () => {
+    // Long right tail: the kind of distribution that breaks min-max anchoring.
+    const skewed = referenceDistribution([...Array(95).fill(2), 40, 90, 300, 1200, 9000]);
+    const low = percentileOf(skewed.breakpoints, 3);
+    const mid = percentileOf(skewed.breakpoints, 90);
+    const high = percentileOf(skewed.breakpoints, 5000);
+    expect(low).toBeLessThan(mid);
+    expect(mid).toBeLessThan(high);
+    expect(high).toBeLessThanOrEqual(100);
+  });
+});
+
+describe('scoreIndicator', () => {
+  it('inverts the percentile when lower values are riskier', () => {
+    expect(scoreIndicator(90, uniform, 'higher-is-riskier')).toBeCloseTo(90, 1);
+    expect(scoreIndicator(90, uniform, 'lower-is-riskier')).toBeCloseTo(10, 1);
+  });
+
+  it('returns null when there is nothing to score', () => {
+    expect(scoreIndicator(null, uniform, 'higher-is-riskier')).toBeNull();
+    expect(scoreIndicator(Number.NaN, uniform, 'higher-is-riskier')).toBeNull();
+    expect(scoreIndicator(5, null, 'higher-is-riskier')).toBeNull();
+  });
+});
+
+describe('pillarScore', () => {
+  it('averages the indicators that have data and reports the coverage', () => {
+    const result = pillarScore([100, 0, null, null]);
+    expect(result.score).toBe(50);
+    expect(result.coverage).toBe(0.5);
+  });
+
+  it('weights every indicator equally', () => {
+    expect(pillarScore([0, 0, 0, 60]).score).toBe(15);
+  });
+
+  it('reports no score when every indicator is missing', () => {
+    expect(pillarScore([null, null])).toEqual({ score: null, coverage: 0 });
   });
 });
 
@@ -69,25 +103,15 @@ describe('totalRisk', () => {
   });
 });
 
-describe('quantile', () => {
-  it('interpolates between neighbouring samples', () => {
-    expect(quantile([0, 10, 20, 30], 0.5)).toBeCloseTo(15, 5);
-    expect(quantile([0, 10, 20, 30], 0)).toBe(0);
-    expect(quantile([0, 10, 20, 30], 1)).toBe(30);
-  });
-
-  it('handles degenerate samples', () => {
-    expect(quantile([], 0.5)).toBeNull();
-    expect(quantile([7], 0.9)).toBe(7);
-  });
-});
-
 describe('bandThresholds and bandFor', () => {
-  it('splits a sample into five equally sized bands', () => {
+  it('splits a sample into five roughly equal bands', () => {
     const scores = Array.from({ length: 100 }, (_, index) => index + 1);
     const thresholds = bandThresholds(scores);
     const counts = new Map(RISK_BANDS.map((band) => [band.id, 0]));
-    for (const score of scores) counts.set(bandFor(score, thresholds).id, counts.get(bandFor(score, thresholds).id) + 1);
+    for (const score of scores) {
+      const id = bandFor(score, thresholds).id;
+      counts.set(id, counts.get(id) + 1);
+    }
     for (const count of counts.values()) expect(count).toBeGreaterThanOrEqual(19);
   });
 
@@ -95,35 +119,48 @@ describe('bandThresholds and bandFor', () => {
     expect(bandThresholds([50, 60])).toEqual([20, 40, 60, 80]);
   });
 
-  it('puts the highest scores in the top band and ignores missing scores', () => {
-    const thresholds = bandThresholds([10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
-    expect(bandFor(100, thresholds).id).toBe('critical');
-    expect(bandFor(10, thresholds).id).toBe('very-low');
-    expect(bandFor(null, thresholds)).toBeNull();
+  it('ignores missing scores', () => {
+    expect(bandFor(null, [20, 40, 60, 80])).toBeNull();
   });
 });
 
 describe('confidenceLevel', () => {
-  it('requires both pillars for anything above low confidence', () => {
-    expect(confidenceLevel(0.2, 1)).toBe('low');
-    expect(confidenceLevel(1, 0.2)).toBe('low');
+  const pillar = (coverage, usable = true) => ({ coverage, usable });
+
+  it('drops to low confidence when a pillar failed its gate', () => {
+    expect(confidenceLevel(pillar(0.2, false), pillar(1))).toBe('low');
+    expect(confidenceLevel(pillar(1), pillar(0.2, false))).toBe('low');
   });
 
   it('separates full coverage from partial coverage', () => {
-    expect(confidenceLevel(1, 1)).toBe('high');
-    expect(confidenceLevel(0.5, 1)).toBe('medium');
+    expect(confidenceLevel(pillar(1), pillar(1))).toBe('high');
+    expect(confidenceLevel(pillar(0.5), pillar(1))).toBe('medium');
+  });
+});
+
+describe('quantile', () => {
+  it('interpolates between neighbouring samples', () => {
+    expect(quantile([0, 10, 20, 30], 0.5)).toBeCloseTo(15, 5);
+    expect(quantile([7], 0.9)).toBe(7);
+    expect(quantile([], 0.5)).toBeNull();
   });
 });
 
 describe('model definitions', () => {
-  it('keeps each pillar normalised to a total weight of one', () => {
-    const sum = (list) => list.reduce((acc, item) => acc + item.weight, 0);
-    expect(sum(ECONOMIC_INDICATORS)).toBeCloseTo(1, 5);
-    expect(sum(GOVERNANCE_INDICATORS)).toBeCloseTo(1, 5);
-  });
-
   it('uses unique keys so lookups cannot collide', () => {
     const keys = [...ECONOMIC_INDICATORS, ...GOVERNANCE_INDICATORS].map((i) => i.key);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it('declares a direction for every indicator', () => {
+    for (const definition of [...ECONOMIC_INDICATORS, ...GOVERNANCE_INDICATORS]) {
+      expect(['higher-is-riskier', 'lower-is-riskier']).toContain(definition.direction);
+    }
+  });
+
+  it('carries no hand-set weights, since weighting is equal by design', () => {
+    for (const definition of [...ECONOMIC_INDICATORS, ...GOVERNANCE_INDICATORS]) {
+      expect(definition.weight).toBeUndefined();
+    }
   });
 });

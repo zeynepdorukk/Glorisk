@@ -4,11 +4,11 @@ import { X } from 'lucide-react';
 import { RISK_BANDS, ECONOMIC_INDICATORS, GOVERNANCE_INDICATORS } from '../lib/riskModel.js';
 import { formatDate } from '../lib/format.js';
 
-function WeightTable({ title, definitions, unitNote }) {
+function IndicatorList({ title, definitions, note }) {
   return (
     <div>
-      <h4 className="mb-2 text-sm font-semibold text-white">{title}</h4>
-      <p className="mb-2 text-xs text-neutral-500">{unitNote}</p>
+      <h4 className="mb-1 text-sm font-semibold text-white">{title}</h4>
+      <p className="mb-2 text-xs text-neutral-500">{note}</p>
       <ul className="divide-y divide-white/5 rounded-lg border border-white/10">
         {definitions.map((definition) => (
           <li key={definition.key} className="flex items-baseline justify-between gap-4 px-3 py-2">
@@ -16,10 +16,24 @@ function WeightTable({ title, definitions, unitNote }) {
               {definition.label}
               <span className="block text-[11px] text-neutral-500">{definition.description}</span>
             </span>
-            <span className="shrink-0 font-mono text-sm text-sky-300">{Math.round(definition.weight * 100)}%</span>
+            <span className="shrink-0 whitespace-nowrap text-[11px] text-neutral-500">
+              {definition.direction === 'higher-is-riskier' ? 'higher = riskier' : 'lower = riskier'}
+            </span>
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+function Diagnostic({ label, value, children }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-xs text-neutral-400">{label}</span>
+        <span className="font-mono text-base text-white">{value}</span>
+      </div>
+      <p className="mt-1 text-[11px] leading-snug text-neutral-500">{children}</p>
     </div>
   );
 }
@@ -38,6 +52,9 @@ export default function MethodologyModal({ open, meta, generatedAt, thresholds =
   }, [open, onClose]);
 
   if (!open) return null;
+
+  const diagnostics = meta?.diagnostics;
+  const sensitivity = diagnostics?.weightSensitivity;
 
   return (
     <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onMouseDown={onClose}>
@@ -60,33 +77,80 @@ export default function MethodologyModal({ open, meta, generatedAt, thresholds =
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5 text-sm leading-relaxed text-neutral-300">
           <section>
             <p>
-              Every country score is recomputed from public data by an automated pipeline — nothing is hand-tuned. Each
-              indicator is mapped onto a 0-100 risk scale between a &ldquo;good&rdquo; and a &ldquo;bad&rdquo; anchor
-              value, the indicators are averaged with the weights below, and the two pillars are blended into the
-              composite score. You can change that blend with the slider in the header.
+              Twelve published indicators, recomputed from scratch by an automated pipeline. Every value is converted
+              into a <strong className="text-white">percentile rank</strong> against a reference distribution pooled
+              over every country and every year in the dataset, the ranks are averaged into two pillars, and the pillars
+              are blended into the composite. The blend is the only number you can change — and the only one that
+              meaningfully moves the ranking.
             </p>
           </section>
 
-          <WeightTable
+          <section>
+            <h4 className="mb-2 text-sm font-semibold text-white">Why percentiles rather than thresholds</h4>
+            <p>
+              Deciding that 2% inflation scores zero and 50% scores a hundred would be an opinion dressed as a
+              measurement, and several of these indicators have long tails — a handful of hyperinflation years would
+              otherwise compress everyone else into the bottom of the scale. A percentile rank asks a question the data
+              can answer on its own: how does this country compare with the roughly two thousand country-years on
+              record? It also puts every indicator on the same footing, which is what makes averaging them defensible.
+            </p>
+          </section>
+
+          <section>
+            <h4 className="mb-2 text-sm font-semibold text-white">Why equal weights</h4>
+            <p>
+              Nothing in the literature says political stability deserves 35% and regulatory quality 5%. Where there is
+              no theoretical or statistical basis for differential weights, the standard practice for composite
+              indicators is to weight equally and publish a sensitivity analysis instead of inventing numbers. So that
+              is what happens here — and the pipeline measures how much it matters:
+            </p>
+            {diagnostics && (
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {sensitivity && (
+                  <Diagnostic label="Rank stability" value={`ρ ${sensitivity.median}`}>
+                    Median Spearman correlation with the published ranking across {sensitivity.draws} random
+                    weightings (every indicator weight drawn from ±50%, blend from 35-65%). Worst draw:{' '}
+                    {sensitivity.minimum}. The weights are not doing the work.
+                  </Diagnostic>
+                )}
+                <Diagnostic label="Pillars overlap" value={`r ${diagnostics.betweenPillars}`}>
+                  Correlation between the economic and governance pillars. Near zero, so the two carry genuinely
+                  independent information and both are worth keeping.
+                </Diagnostic>
+                <Diagnostic label="Governance redundancy" value={`r ${diagnostics.governance.meanCorrelation}`}>
+                  Mean pairwise correlation inside the governance pillar — {diagnostics.governance.strongestPair?.pair}{' '}
+                  alone reaches {diagnostics.governance.strongestPair?.r}. These six measures largely track one
+                  underlying construct; averaging them estimates it more reliably, but it is not six independent
+                  readings.
+                </Diagnostic>
+                <Diagnostic label="Economic redundancy" value={`r ${diagnostics.economic.meanCorrelation}`}>
+                  The same figure for the economic pillar. Near zero: these six really are separate signals.
+                </Diagnostic>
+              </div>
+            )}
+          </section>
+
+          <IndicatorList
             title="Economic pillar"
             definitions={ECONOMIC_INDICATORS}
-            unitNote="World Bank Open Data. Each indicator is clamped between its best and worst anchor before scoring."
+            note="World Bank Open Data. Six indicators, equally weighted."
           />
 
-          <WeightTable
+          <IndicatorList
             title="Governance pillar"
             definitions={GOVERNANCE_INDICATORS}
-            unitNote="Worldwide Governance Indicators, published as a 0-100 governance score (higher is better). Risk is 100 minus that score."
+            note="Worldwide Governance Indicators, published as a 0-100 score where higher means better governed."
           />
 
           <section>
             <h4 className="mb-2 text-sm font-semibold text-white">Missing data</h4>
             <p>
-              Indicators are not published for every country. When a value is missing — or older than six years — its
-              weight is redistributed across the indicators that remain, and the share of the model that survived is
-              reported as coverage. A pillar is only used in the headline score once enough of its weight is covered,
-              which is why some countries are labelled <em>limited data</em>: they are scored from a single pillar and
-              should be read as indicative.
+              Indicators are not published for every country, and statistics are thinnest exactly where risk is highest.
+              An observation older than six years counts as missing; the remaining indicators are averaged and the share
+              that survived is reported as coverage. A pillar needs a third of its economic indicators, or half of its
+              governance indicators, to count toward the headline score. Countries left with one usable pillar are still
+              scored and ranked but flagged <em>limited data</em> — dropping them would blank out much of the map's
+              worst quarter.
             </p>
           </section>
 
@@ -94,8 +158,7 @@ export default function MethodologyModal({ open, meta, generatedAt, thresholds =
             <h4 className="mb-2 text-sm font-semibold text-white">Bands</h4>
             <p className="mb-2 text-xs text-neutral-500">
               Colours are global quintiles of the current blend, so each band always holds a fifth of the scored
-              countries. Fixed cut-offs would leave most of the world in one colour, because composite scores cluster in
-              a narrow range.
+              countries.
             </p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
               {RISK_BANDS.map((band, index) => (
@@ -127,9 +190,10 @@ export default function MethodologyModal({ open, meta, generatedAt, thresholds =
 
           <section className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-200/90">
             <strong className="text-amber-200">Limitations.</strong> This is an open-data project, not an investment or
-            travel advisory. Governance indicators are published annually and lag reality by a year or more, macro
-            statistics are revised, and a single composite number can never capture why a country is risky. Treat it as
-            a starting point for research, not a verdict.
+            travel advisory. Governance indicators are published once a year and lag reality. Percentile ranks are
+            robust but ordinal: they say a country is in the worst 5% for inflation, not by how much. Averaging the two
+            pillars is fully compensatory — strong institutions can offset a failing economy in the arithmetic, which
+            is exactly why the components stay visible in the country panel.
           </section>
         </div>
 
