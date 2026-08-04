@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'public/data']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
@@ -24,6 +24,16 @@ export default defineConfig([
     },
     rules: {
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+    },
+  },
+  {
+    // The ETL pipeline and the Vite config run in Node, not in the browser.
+    files: ['scripts/**/*.mjs', 'vite.config.js', '**/*.test.js'],
+    extends: [js.configs.recommended],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      globals: { ...globals.node },
+      parserOptions: { sourceType: 'module' },
     },
   },
 ])

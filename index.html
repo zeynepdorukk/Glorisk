@@ -2,12 +2,25 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>glorisk</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <link rel="icon" type="image/svg+xml" href="./glorisk.svg" />
+    <title>Glorisk — country risk from open data</title>
+    <meta
+      name="description"
+      content="An interactive world map of country risk, scored from World Bank macro-economic indicators and Worldwide Governance Indicators."
+    />
+    <meta name="theme-color" content="#09090b" />
+    <meta property="og:title" content="Glorisk — country risk from open data" />
+    <meta
+      property="og:description"
+      content="Composite economic and governance risk for 200+ countries, rebuilt daily from public data."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="preconnect" href="https://basemaps.cartocdn.com" crossorigin />
   </head>
   <body>
     <div id="root"></div>
+    <noscript>Glorisk needs JavaScript to render the interactive risk map.</noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
