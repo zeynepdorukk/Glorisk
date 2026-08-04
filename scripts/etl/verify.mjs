@@ -73,6 +73,22 @@ check(
   'meta.json indicator definitions do not match the risk model',
 );
 
+for (const key of definedKeys) {
+  const reference = meta.references?.[key];
+  check(Boolean(reference), `no reference distribution published for ${key}`);
+  if (!reference) continue;
+  check(reference.breakpoints?.length === 101, `${key}: reference should have 101 breakpoints`);
+  const ascending = reference.breakpoints.every((value, index, all) => index === 0 || value >= all[index - 1]);
+  check(ascending, `${key}: reference breakpoints are not sorted`);
+  check(reference.count >= 200, `${key}: only ${reference.count} observations behind the reference distribution`);
+}
+
+check(Number.isFinite(meta.diagnostics?.betweenPillars), 'meta.json is missing the pillar correlation diagnostic');
+check(
+  Number.isFinite(meta.diagnostics?.weightSensitivity?.median),
+  'meta.json is missing the weight sensitivity diagnostic',
+);
+
 if (failures.length > 0) {
   console.error(`[verify] ${failures.length} problem(s) found:`);
   for (const failure of failures) console.error(`  - ${failure}`);

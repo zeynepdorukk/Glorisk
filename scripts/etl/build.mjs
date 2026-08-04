@@ -118,13 +118,6 @@ async function fetchAllSeries(definitions, source) {
   return entries;
 }
 
-function percentileRanks(countries) {
-  const scored = countries.filter((country) => country.total !== null).sort((a, b) => a.total - b.total);
-  scored.forEach((country, index) => {
-    country.percentile = scored.length < 2 ? 50 : Math.round((index / (scored.length - 1)) * 100);
-  });
-}
-
 async function main() {
   log(`building data for ${FROM_YEAR}-${CURRENT_YEAR}`);
 
@@ -174,7 +167,6 @@ async function main() {
       total: total === null ? null : Number(total.toFixed(1)),
       confidence,
       trajectory,
-      percentile: null,
     });
 
     const history = {};
@@ -185,9 +177,9 @@ async function main() {
     histories.set(meta.id, history);
   }
 
-  percentileRanks(countries);
   countries.sort((a, b) => a.name.localeCompare(b.name));
   log(`scored ${countries.length} countries`);
+
 
   const diagnostics = buildDiagnostics(countries, ECONOMIC_INDICATORS, GOVERNANCE_INDICATORS);
   log(

@@ -6,13 +6,40 @@
 </div>
 
 A world map of country risk, scored from open data. Pick a country and you get
-the number, the six economic and six governance indicators behind it, how far
-each one is from where you would want it, and how the whole thing has moved over
+the number, the six economic and six governance indicators behind it, where each
+one sits against the rest of the world, and how the whole thing has moved over
 the last decade.
 
 **→ [zeynepdorukk.github.io/Glorisk](https://zeynepdorukk.github.io/Glorisk/)**
 
 ![The map with Türkiye selected](docs/screenshot-map.png)
+
+## Why this exists
+
+Country risk is mostly something you buy. The indices people actually cite — ICRG,
+the EIU's ratings, the big agencies' sovereign work — sit behind subscriptions,
+and the part that matters most, how the score is assembled, is usually the part
+they keep. You are asked to trust a number whose construction you cannot inspect.
+
+Meanwhile the underlying material is public. The World Bank publishes the macro
+series; the Worldwide Governance Indicators, built from dozens of surveys and
+expert assessments, are free to download. What is missing is not data but the
+assembly: the normalisation, the weighting, the treatment of missing values, and
+an honest account of how much those choices change the answer.
+
+That is the whole point of this project. It is not that the composite here is
+better than a commercial index — it is that every step is visible, versioned and
+reproducible, down to a pipeline that refuses to publish a dataset that fails its
+own checks.
+
+The two-pillar split carries the argument. Political risk and economic risk get
+spoken about as one thing, and the data says they are not: across 200 countries
+the two pillars correlate at r 0.02. Russia and Greece land six points apart on
+the composite and are near mirror images underneath — Russia 34 economic against
+82 governance, Greece 69 against 36. One number hides that; two do not. Rather
+than settle which pillar matters more — a question with no data-driven answer —
+the header has a slider, so the weighting is a choice the reader makes and
+watches take effect, not an assumption buried in the code.
 
 ## The score
 
@@ -39,7 +66,7 @@ both the pipeline and the browser import, so the numbers can never drift apart.
 
 ### Percentiles, not hand-picked thresholds
 
-An earlier version normalised each indicator between anchors I chose: 2%
+An earlier version normalised each indicator between hand-picked anchors: 2%
 inflation scores zero, 50% scores a hundred. That is an opinion dressed as a
 measurement, and it behaves badly on skewed data — a handful of hyperinflation
 years drags everyone else into the bottom of the scale, and every country above
@@ -214,3 +241,7 @@ always there.
 - [Worldwide Governance Indicators](https://www.worldbank.org/en/publication/worldwide-governance-indicators) — governance scores, regions, income groups
 - Basemap tiles © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, © [CARTO](https://carto.com/attributions)
 - Flags from [flagcdn.com](https://flagcdn.com)
+
+---
+
+A project by **Zeynep Doruk**, International Relations student.

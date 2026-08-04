@@ -53,9 +53,6 @@ export async function fetchCountries() {
       name: row.name.trim(),
       region: row.region.value.trim(),
       incomeLevel: row.incomeLevel?.value?.trim() ?? null,
-      capital: row.capitalCity?.trim() || null,
-      latitude: row.latitude ? Number(row.latitude) : null,
-      longitude: row.longitude ? Number(row.longitude) : null,
     }));
 }
 
