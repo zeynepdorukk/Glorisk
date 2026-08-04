@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Globe2, Info, Layers, List, Loader2, Search, TriangleAlert } from 'lucide-react';
+import { Info, Layers, List, Loader2, Search, TriangleAlert } from 'lucide-react';
 
 import CountryPanel from './components/CountryPanel.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import Legend from './components/Legend.jsx';
+import Logo from './components/Logo.jsx';
 import MapView from './components/MapView.jsx';
 import MethodologyModal from './components/MethodologyModal.jsx';
 import RankingPanel from './components/RankingPanel.jsx';
@@ -109,10 +110,8 @@ export default function App() {
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-neutral-950 text-neutral-100">
       <header className="z-[1500] flex h-14 shrink-0 items-center gap-3 border-b border-white/10 bg-neutral-950/90 px-3 backdrop-blur-md sm:px-4">
-        <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 to-violet-600 shadow-lg shadow-sky-500/20">
-            <Globe2 size={18} className="text-white" />
-          </span>
+        <div className="flex items-center gap-2.5">
+          <Logo size={30} />
           <span className="text-lg font-semibold tracking-tight text-white">Glorisk</span>
           <span className="hidden text-[11px] text-neutral-500 md:block">country risk from open data</span>
         </div>

@@ -1,5 +1,7 @@
 # Glorisk
 
+<img src="public/logo.svg" width="72" alt="" align="right" />
+
 An interactive world map of country risk, scored from public data.
 
 **Live: https://zeynepdorukk.github.io/Glorisk/**
@@ -74,7 +76,23 @@ npm run build
 
 npm run etl        # rebuild public/data from the World Bank API
 npm run etl:verify # sanity check the generated datasets
+npm run icons      # regenerate favicon.ico and the PNG icons from the logo
 ```
+
+## Brand
+
+Three nested geometric layers — global reach, exposure, and the flagged core —
+in three colours that also carry through the interface.
+
+| | Hex | Used for |
+| --- | --- | --- |
+| Sky | `#0EA5E9` | Outer layer, economic pillar, links |
+| Violet | `#7C3AED` | Middle layer, governance pillar |
+| Amber | `#F59E0B` | Core, limited-data flags, warnings |
+
+`public/logo.svg` is the source of truth; `npm run icons` renders
+`favicon.ico` (16-64), `icon-192.png`, `icon-512.png` and `apple-touch-icon.png`
+from it. Icons at 32px and below drop the middle layer so the mark stays legible.
 
 ## Limitations
 
