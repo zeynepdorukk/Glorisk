@@ -96,7 +96,13 @@ export default function App() {
 
   const detail = selected && (
     <ErrorBoundary>
-      <CountryPanel key={selected.id} country={selected} onClose={clearSelection} />
+      <CountryPanel
+        key={selected.id}
+        country={selected}
+        countries={countries}
+        onSelect={selectCountry}
+        onClose={clearSelection}
+      />
     </ErrorBoundary>
   );
 

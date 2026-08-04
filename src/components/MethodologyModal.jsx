@@ -128,8 +128,8 @@ export default function MethodologyModal({ open, meta, generatedAt, thresholds =
           <section className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-200/90">
             <strong className="text-amber-200">Limitations.</strong> This is an open-data project, not an investment or
             travel advisory. Governance indicators are published annually and lag reality by a year or more, macro
-            statistics are revised, and news tone is a noisy signal that is shown alongside the score but never folded
-            into it. Treat the number as a starting point for research, not a verdict.
+            statistics are revised, and a single composite number can never capture why a country is risky. Treat it as
+            a starting point for research, not a verdict.
           </section>
         </div>
 

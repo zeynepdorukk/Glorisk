@@ -5,10 +5,6 @@
  * derives the scores once (so the browser never has to), and writes static JSON
  * that the site loads straight from disk. Run locally with `npm run etl`, or on
  * a schedule from CI.
- *
- * Flags:
- *   --skip-news        do not touch GDELT at all
- *   --news-limit=N     only fetch news for the N riskiest countries
  */
 
 import fs from 'node:fs/promises';
@@ -16,7 +12,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { fetchCountries, fetchIndicator } from './worldbank.mjs';
-import { fetchArticles, fetchToneTimeline } from './gdelt.mjs';
 import { displayName } from './displayNames.mjs';
 import {
   ECONOMIC_INDICATORS,
@@ -36,12 +31,6 @@ const HISTORY_DIR = path.join(OUT_DIR, 'history');
 
 const CURRENT_YEAR = new Date().getUTCFullYear();
 const FROM_YEAR = CURRENT_YEAR - 11;
-
-const args = process.argv.slice(2);
-const SKIP_NEWS = args.includes('--skip-news');
-const NEWS_LIMIT = Number(args.find((a) => a.startsWith('--news-limit='))?.split('=')[1] ?? 40);
-/** GDELT throttling is unpredictable, so the harvest gets a hard time budget. */
-const NEWS_BUDGET_MS = Number(args.find((a) => a.startsWith('--news-budget='))?.split('=')[1] ?? 15) * 60_000;
 
 const log = (...parts) => console.log('[etl]', ...parts);
 
@@ -117,61 +106,6 @@ function percentileRanks(countries) {
   });
 }
 
-async function readExistingNews() {
-  try {
-    const raw = await fs.readFile(path.join(OUT_DIR, 'news.json'), 'utf8');
-    return JSON.parse(raw).news ?? {};
-  } catch {
-    return {};
-  }
-}
-
-async function collectNews(countries) {
-  const existing = await readExistingNews();
-  if (SKIP_NEWS) {
-    log('news collection skipped, keeping the previous payload');
-    return existing;
-  }
-  const targets = [...countries]
-    .filter((country) => country.total !== null)
-    .sort((a, b) => b.total - a.total)
-    .slice(0, NEWS_LIMIT);
-
-  log(`collecting news for ${targets.length} countries`);
-  // A partial harvest must not wipe out coverage collected on earlier runs.
-  const news = { ...existing };
-  const deadline = Date.now() + NEWS_BUDGET_MS;
-  let failures = 0;
-  let collected = 0;
-
-  for (const country of targets) {
-    if (Date.now() > deadline) {
-      log('news time budget exhausted, stopping');
-      break;
-    }
-    try {
-      const articles = await fetchArticles(country.name);
-      const tone = await fetchToneTimeline(country.name);
-      if (articles.length === 0 && !tone) continue;
-      news[country.id] = {
-        articles,
-        tone: tone ? { average: Number(tone.average.toFixed(2)), points: tone.points } : null,
-        fetchedAt: new Date().toISOString(),
-      };
-      collected += 1;
-    } catch (error) {
-      failures += 1;
-      log(`news failed for ${country.id}: ${error.message}`);
-      if (failures >= 8) {
-        log('too many news failures, stopping news collection');
-        break;
-      }
-    }
-  }
-  log(`news refreshed for ${collected} countries, ${Object.keys(news).length} in the payload`);
-  return news;
-}
-
 async function main() {
   log(`building data for ${FROM_YEAR}-${CURRENT_YEAR}`);
 
@@ -233,27 +167,22 @@ async function main() {
   countries.sort((a, b) => a.name.localeCompare(b.name));
   log(`scored ${countries.length} countries`);
 
-  const news = await collectNews(countries);
-
   await fs.mkdir(HISTORY_DIR, { recursive: true });
   await fs.writeFile(
     path.join(OUT_DIR, 'countries.json'),
     JSON.stringify({ generatedAt: new Date().toISOString(), countries }),
   );
-  await fs.writeFile(path.join(OUT_DIR, 'news.json'), JSON.stringify({ generatedAt: new Date().toISOString(), news }));
   await fs.writeFile(
     path.join(OUT_DIR, 'meta.json'),
     JSON.stringify({
       generatedAt: new Date().toISOString(),
       yearRange: [FROM_YEAR, CURRENT_YEAR],
       countryCount: countries.length,
-      newsCountryCount: Object.keys(news).length,
       economicIndicators: ECONOMIC_INDICATORS,
       governanceIndicators: GOVERNANCE_INDICATORS,
       sources: [
         { name: 'World Bank Open Data', url: 'https://data.worldbank.org', description: 'Macro-economic indicators.' },
-        { name: 'Worldwide Governance Indicators', url: 'https://www.worldbank.org/en/publication/worldwide-governance-indicators', description: 'Governance percentile scores.' },
-        { name: 'GDELT Project', url: 'https://www.gdeltproject.org', description: 'English-language news coverage and tone.' },
+        { name: 'Worldwide Governance Indicators', url: 'https://www.worldbank.org/en/publication/worldwide-governance-indicators', description: 'Governance scores, regions and income groups.' },
       ],
     }),
   );

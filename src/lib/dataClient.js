@@ -27,5 +27,4 @@ async function loadJson(file) {
 export const loadCountries = () => loadJson('countries.json');
 export const loadGeometry = () => loadJson('world.geo.json');
 export const loadMeta = () => loadJson('meta.json');
-export const loadNews = () => loadJson('news.json');
 export const loadHistory = (iso3) => loadJson(`history/${iso3}.json`);

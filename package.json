@@ -10,7 +10,6 @@
     "preview": "vite preview",
     "test": "vitest run",
     "etl": "node scripts/etl/build.mjs",
-    "etl:fast": "node scripts/etl/build.mjs --skip-news",
     "etl:verify": "node scripts/etl/verify.mjs"
   },
   "dependencies": {

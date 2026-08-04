@@ -17,7 +17,7 @@ the exact weights are published in the app.
 - **Ranking panel** — sortable and filterable by region and risk band.
 - **Country detail** — pillar breakdown, every underlying indicator with its
   value, year and 10-year sparkline, a risk trajectory, a data-confidence badge
-  and recent news coverage.
+  and where the country sits within its region, income group and nearest peers.
 - **Search palette** — `Ctrl`/`Cmd` + `K` or `/`.
 - **Shareable state** — the selected country, band filter and pillar blend all
   live in the URL, e.g. `?c=TUR&w=70`.
@@ -50,7 +50,6 @@ never talks to a rate-limited third-party API at page load.
 ```
 scripts/etl/
   worldbank.mjs   paginated World Bank client with retries
-  gdelt.mjs       throttled GDELT news client (failures are non-fatal)
   build.mjs       scores every country, writes public/data/*
   verify.mjs      sanity checks the output before it is committed
 src/lib/
@@ -59,7 +58,6 @@ src/lib/
 public/data/
   countries.json  latest values, pillar scores, trajectory, confidence
   history/<ISO3>  10-year series per indicator, loaded on demand
-  news.json       recent headlines and 30-day news tone
 ```
 
 A scheduled GitHub Actions job rebuilds the datasets daily, verifies them,
@@ -74,21 +72,22 @@ npm test           # risk model unit tests
 npm run lint
 npm run build
 
-npm run etl        # rebuild public/data (World Bank + GDELT)
-npm run etl:fast   # skip the news harvest, keep the previous payload
+npm run etl        # rebuild public/data from the World Bank API
+npm run etl:verify # sanity check the generated datasets
 ```
-
-The GDELT public API throttles to roughly one request per IP every few seconds,
-so a full news harvest takes several minutes; `etl:fast` is what you usually
-want locally.
 
 ## Limitations
 
 This is an open-data project, not an investment or travel advisory. Governance
 indicators are published annually and lag reality, macro statistics are revised,
-and news tone is a noisy signal that is shown next to the score but never folded
-into it.
+and a single composite number can never capture why a country is risky.
+
+A live news layer was prototyped on top of GDELT and removed: the API refuses
+shared addresses, omits CORS headers on throttled responses, and its topical
+queries returned articles unrelated to the country being viewed. Showing
+plausible-looking but wrong headlines next to a risk score is worse than showing
+none.
 
 Data: [World Bank Open Data](https://data.worldbank.org),
-[Worldwide Governance Indicators](https://www.worldbank.org/en/publication/worldwide-governance-indicators),
-[GDELT](https://www.gdeltproject.org). Basemap tiles © OpenStreetMap contributors, © CARTO.
+[Worldwide Governance Indicators](https://www.worldbank.org/en/publication/worldwide-governance-indicators).
+Basemap tiles © OpenStreetMap contributors, © CARTO.
