@@ -1,7 +1,9 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="public/logo-wordmark-dark.svg" />
-  <img src="public/logo-wordmark.svg" alt="Glorisk" height="52" />
-</picture>
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/logo-wordmark-dark.svg" />
+    <img src="public/logo-wordmark.svg" alt="Glorisk" height="56" />
+  </picture>
+</div>
 
 A world map of country risk, scored from open data. Pick a country and you get
 the number, the six economic and six governance indicators behind it, how far
