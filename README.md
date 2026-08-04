@@ -42,8 +42,11 @@ answer — the header has a slider, so the weighting is a choice the reader make
 and watches take effect, not an assumption buried in the code.
 
 The site puts that argument in front of the reader rather than in a footnote:
-**Findings** plots every country on the two pillars, and if they measured the
-same thing the cloud would be a line.
+[**Findings**](https://zeynepdorukk.github.io/Glorisk/?view=findings) plots every
+country on the two pillars, and if they measured the same thing the cloud would
+be a line.
+
+![The findings view: economic risk against governance risk](docs/screenshot-findings.png)
 
 ## Does any of it hold up?
 
@@ -199,7 +202,10 @@ half-empty map.
 
 - Selection, band filter and pillar blend all live in the URL:
   [`?c=TUR&w=70`](https://zeynepdorukk.github.io/Glorisk/?c=TUR&w=70) is a
-  shareable view.
+  shareable view, and so is
+  [`?view=findings`](https://zeynepdorukk.github.io/Glorisk/?view=findings).
+  Dialogs replace rather than push history, so Back leaves the site instead of
+  reopening a panel.
 - `Ctrl`/`Cmd` + `K` or `/` opens a command palette; prefix matches rank above
   substring matches, so "turk" finds Türkiye before Turkmenistan.
 - The choropleth sits on a CARTO dark basemap with place labels in a **pane above
