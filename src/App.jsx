@@ -45,11 +45,16 @@ function ErrorScreen({ error }) {
 export default function App() {
   const [urlState, setUrlState] = useUrlState();
   const [searchOpen, setSearchOpen] = useState(false);
-  const [methodologyOpen, setMethodologyOpen] = useState(false);
-  const [findingsOpen, setFindingsOpen] = useState(false);
   const [rankingOpen, setRankingOpen] = useState(false);
   const [basemap, setBasemap] = useState('dark');
   const isDesktop = useMediaQuery('(min-width: 1024px)');
+
+  const methodologyOpen = urlState.view === 'method';
+  const findingsOpen = urlState.view === 'findings';
+  // Addressable so a view can be linked, but replaced rather than pushed: Back
+  // should leave the site, not reopen a dialog.
+  const openView = useCallback((view) => setUrlState({ view }, { replace: true }), [setUrlState]);
+  const closeView = useCallback(() => setUrlState({ view: null }, { replace: true }), [setUrlState]);
 
   const weights = useMemo(
     () => ({ economic: urlState.economicWeight / 100, governance: 1 - urlState.economicWeight / 100 }),
@@ -61,7 +66,7 @@ export default function App() {
 
   const selectCountry = useCallback(
     (id) => {
-      setUrlState({ countryId: id });
+      setUrlState({ countryId: id, view: null });
       setRankingOpen(false);
     },
     [setUrlState],
@@ -94,7 +99,7 @@ export default function App() {
       bandFilter={urlState.band}
       onSelect={selectCountry}
       onOpenSearch={() => setSearchOpen(true)}
-      onOpenFindings={() => setFindingsOpen(true)}
+      onOpenFindings={() => openView('findings')}
       pillarCorrelation={meta?.diagnostics?.betweenPillars}
     />
   );
@@ -130,7 +135,7 @@ export default function App() {
 
           <button
             type="button"
-            onClick={() => setFindingsOpen(true)}
+            onClick={() => openView('findings')}
             className="rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-neutral-300 transition hover:border-white/25 hover:bg-white/5 hover:text-white"
           >
             Findings
@@ -162,7 +167,7 @@ export default function App() {
           </button>
           <button
             type="button"
-            onClick={() => setMethodologyOpen(true)}
+            onClick={() => openView('method')}
             aria-label="How the score is built"
             className="rounded-lg p-2 text-neutral-400 transition hover:bg-white/10 hover:text-white"
           >
@@ -227,7 +232,7 @@ export default function App() {
         meta={meta}
         generatedAt={generatedAt}
         thresholds={thresholds}
-        onClose={() => setMethodologyOpen(false)}
+        onClose={closeView}
       />
       <FindingsModal
         open={findingsOpen}
@@ -235,7 +240,7 @@ export default function App() {
         meta={meta}
         selectedId={urlState.countryId}
         onSelect={selectCountry}
-        onClose={() => setFindingsOpen(false)}
+        onClose={closeView}
       />
 
       <p className="sr-only" aria-live="polite">

@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
 
-const KEYS = { country: 'c', weight: 'w', band: 'band' };
+const KEYS = { country: 'c', weight: 'w', band: 'band', view: 'view' };
+
+const VIEWS = ['findings', 'method'];
 
 function readFromLocation() {
   const params = new URLSearchParams(window.location.search);
   const rawWeight = params.get(KEYS.weight);
   const weight = rawWeight === null ? Number.NaN : Number(rawWeight);
+  const view = params.get(KEYS.view);
   return {
     countryId: params.get(KEYS.country)?.toUpperCase() || null,
     economicWeight: Number.isFinite(weight) && weight >= 0 && weight <= 100 ? weight : 50,
     band: params.get(KEYS.band) || 'all',
+    view: VIEWS.includes(view) ? view : null,
   };
 }
 
@@ -21,6 +25,8 @@ function writeToLocation(state, { replace = false } = {}) {
   else params.delete(KEYS.weight);
   if (state.band !== 'all') params.set(KEYS.band, state.band);
   else params.delete(KEYS.band);
+  if (state.view) params.set(KEYS.view, state.view);
+  else params.delete(KEYS.view);
 
   const query = params.toString();
   const url = `${window.location.pathname}${query ? `?${query}` : ''}`;
