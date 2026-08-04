@@ -1,4 +1,7 @@
-<img src="public/logo-wordmark.svg" alt="Glorisk" height="52" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="public/logo-wordmark-dark.svg" />
+  <img src="public/logo-wordmark.svg" alt="Glorisk" height="52" />
+</picture>
 
 A world map of country risk, scored from open data. Pick a country and you get
 the number, the six economic and six governance indicators behind it, how far
@@ -147,7 +150,9 @@ colours that carry through the interface.
 `public/logo.svg` is the source; `npm run icons` renders `favicon.ico` (16-64),
 `icon-192.png`, `icon-512.png` and `apple-touch-icon.png` from it. Icons at 32px
 and below drop the middle layer, which turns to mush at that size, and the touch
-icon ships on the dark tile because iOS ignores transparency.
+icon ships on the dark tile because iOS ignores transparency. The wordmark comes
+in two files rather than one adaptive file, because GitHub strips `<style>` from
+proxied SVGs and a media query would leave the text invisible on one theme.
 
 ## Limitations
 
