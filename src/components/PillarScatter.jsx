@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useI18n } from '../i18n.jsx';
 
 const SIZE = { width: 460, height: 460, pad: 44 };
 const TICKS = [0, 25, 50, 75, 100];
@@ -9,6 +10,7 @@ const TICKS = [0, 25, 50, 75, 100];
  * a diagonal line.
  */
 export default function PillarScatter({ countries, highlighted = [], selectedId, onSelect }) {
+  const { copy, countryName } = useI18n();
   const { width, height, pad } = SIZE;
   const plotted = useMemo(
     () =>
@@ -29,7 +31,7 @@ export default function PillarScatter({ countries, highlighted = [], selectedId,
         viewBox={`0 0 ${width} ${height}`}
         className="w-full"
         role="img"
-        aria-label={`Scatter plot of economic risk against governance risk for ${plotted.length} countries`}
+        aria-label={copy.scatter.aria(plotted.length)}
       >
         <rect x={pad} y={pad} width={width - pad * 2} height={height - pad * 2} fill="rgba(255,255,255,0.02)" rx="6" />
 
@@ -62,7 +64,7 @@ export default function PillarScatter({ countries, highlighted = [], selectedId,
               className="cursor-pointer transition-[r]"
               onClick={() => onSelect?.(country.id)}
             >
-              <title>{`${country.name} — economic ${Math.round(country.economic.score)}, governance ${Math.round(country.governance.score)}`}</title>
+              <title>{copy.scatter.point(countryName(country), Math.round(country.economic.score), Math.round(country.governance.score))}</title>
             </circle>
           );
         })}
@@ -74,12 +76,12 @@ export default function PillarScatter({ countries, highlighted = [], selectedId,
             y={y(country.governance.score) + 4}
             className="fill-neutral-200 text-[11px] font-medium"
           >
-            {country.name}
+            {countryName(country)}
           </text>
         ))}
 
         <text x={width / 2} y={height - 6} textAnchor="middle" className="fill-neutral-400 text-[11px]">
-          Economic risk →
+          {copy.scatter.economic}
         </text>
         <text
           x={-height / 2}
@@ -88,7 +90,7 @@ export default function PillarScatter({ countries, highlighted = [], selectedId,
           transform="rotate(-90)"
           className="fill-neutral-400 text-[11px]"
         >
-          Governance risk →
+          {copy.scatter.governance}
         </text>
       </svg>
     </figure>

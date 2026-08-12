@@ -1,17 +1,16 @@
-const compactNumber = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
-
-export function formatValue(value, unit) {
+export function formatValue(value, unit, locale = 'en-US') {
   if (value === null || value === undefined) return '—';
-  const rounded = Math.abs(value) >= 1000 ? compactNumber.format(value) : value.toFixed(1);
+  const compactNumber = new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 1 });
+  const rounded = Math.abs(value) >= 1000 ? compactNumber.format(value) : new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value);
   if (!unit) return rounded;
   return unit === '%' ? `${rounded}%` : `${rounded} ${unit}`;
 }
 
-export function formatDate(iso) {
+export function formatDate(iso, locale) {
   if (!iso) return '—';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 /** Removes diacritics so that "Turkiye" also matches "Türkiye". */

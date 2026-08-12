@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { GeoJSON, MapContainer, TileLayer, ZoomControl, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import { useI18n } from '../i18n.jsx';
 
 const BASEMAPS = {
   dark: {
@@ -35,10 +36,10 @@ function computeStyle(iso3, { byId, selectedId, bandFilter }) {
   };
 }
 
-function tooltipFor(iso3, byId, feature) {
+function tooltipFor(iso3, byId, feature, noData, countryName) {
   const country = byId.get(iso3);
-  const name = country?.name ?? feature?.properties?.name ?? iso3;
-  const score = country && country.score !== null ? `${Math.round(country.score)}/100` : 'no data';
+  const name = country ? countryName(country) : feature?.properties?.name ?? iso3;
+  const score = country && country.score !== null ? `${Math.round(country.score)}/100` : noData;
   return `<strong>${name}</strong><span>${score}</span>`;
 }
 
@@ -57,6 +58,7 @@ function LabelsPane({ url }) {
 }
 
 export default function MapView({ geometry, byId, selectedId, bandFilter, basemap, onSelect }) {
+  const { copy, countryName, language } = useI18n();
   const mapRef = useRef(null);
   const layerRef = useRef(null);
   // MapContainer renders its children only once Leaflet is ready, so the layer
@@ -76,9 +78,9 @@ export default function MapView({ geometry, byId, selectedId, bandFilter, basema
     layerRef.current?.eachLayer((layer) => {
       const iso3 = layer.feature?.id;
       layer.setStyle(computeStyle(iso3, latest.current));
-      layer.setTooltipContent(tooltipFor(iso3, byId, layer.feature));
+      layer.setTooltipContent(tooltipFor(iso3, byId, layer.feature, copy.country.noData, countryName));
     });
-  }, [byId, selectedId, bandFilter, onSelect]);
+  }, [byId, selectedId, bandFilter, onSelect, copy.country.noData, countryName]);
 
   useEffect(() => {
     if (!selectedId || !mapRef.current || !layerRef.current) return;
@@ -95,7 +97,7 @@ export default function MapView({ geometry, byId, selectedId, bandFilter, basema
   }, [selectedId, layerReady]);
 
   const onEachFeature = useCallback((feature, layer) => {
-    layer.bindTooltip(tooltipFor(feature.id, latest.current.byId, feature), {
+    layer.bindTooltip(tooltipFor(feature.id, latest.current.byId, feature, copy.country.noData, countryName), {
       sticky: true,
       direction: 'top',
       className: 'glorisk-tooltip',
@@ -112,9 +114,12 @@ export default function MapView({ geometry, byId, selectedId, bandFilter, basema
         if (latest.current.byId.has(iso3)) latest.current.onSelect(iso3);
       },
     });
-  }, []);
+  }, [copy.country.noData, countryName]);
 
   const tiles = BASEMAPS[basemap] ?? BASEMAPS.dark;
+  const attribution = basemap === 'satellite'
+    ? `${copy.map.tiles} &copy; Esri &mdash; ${copy.map.source}: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community`
+    : tiles.attribution;
 
   return (
     <MapContainer
@@ -130,7 +135,7 @@ export default function MapView({ geometry, byId, selectedId, bandFilter, basema
       maxBoundsViscosity={0.8}
       style={{ height: '100%', width: '100%', background: '#09090b' }}
     >
-      <TileLayer url={tiles.url} attribution={tiles.attribution} />
+      <TileLayer url={tiles.url} attribution={attribution} />
       {geometry && (
         <GeoJSON
           ref={attachLayer}
@@ -139,8 +144,8 @@ export default function MapView({ geometry, byId, selectedId, bandFilter, basema
           onEachFeature={onEachFeature}
         />
       )}
-      <LabelsPane url={tiles.labels} />
-      <ZoomControl position="bottomright" />
+      {language !== 'tr' && <LabelsPane url={tiles.labels} />}
+      <ZoomControl position="bottomright" zoomInTitle={copy.map.zoomIn} zoomOutTitle={copy.map.zoomOut} />
     </MapContainer>
   );
 }

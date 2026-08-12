@@ -15,34 +15,38 @@ import { useRiskData } from './lib/useRiskData.js';
 import { useUrlState } from './lib/useUrlState.js';
 import { useMediaQuery } from './lib/useMediaQuery.js';
 import { formatDate } from './lib/format.js';
+import { useI18n } from './i18n.jsx';
 
 function LoadingScreen() {
+  const { copy } = useI18n();
   return (
     <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-neutral-950 text-neutral-400">
       <Loader2 className="animate-spin text-sky-400" size={28} />
-      <p className="text-sm">Loading country risk data…</p>
+      <p className="text-sm">{copy.app.loading}</p>
     </div>
   );
 }
 
 function ErrorScreen({ error }) {
+  const { copy } = useI18n();
   return (
     <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-neutral-950 p-6 text-center">
       <TriangleAlert className="text-rose-400" size={28} />
-      <p className="text-sm text-neutral-200">The risk dataset could not be loaded.</p>
+      <p className="text-sm text-neutral-200">{copy.app.loadError}</p>
       <p className="max-w-md font-mono text-xs text-neutral-500">{error?.message}</p>
       <button
         type="button"
         onClick={() => window.location.reload()}
         className="mt-2 rounded-lg border border-white/15 px-4 py-2 text-sm text-neutral-200 transition hover:bg-white/10"
       >
-        Reload
+        {copy.app.reload}
       </button>
     </div>
   );
 }
 
 export default function App() {
+  const { copy, locale, countryName } = useI18n();
   const [urlState, setUrlState] = useUrlState();
   const [searchOpen, setSearchOpen] = useState(false);
   const [rankingOpen, setRankingOpen] = useState(false);
@@ -122,7 +126,7 @@ export default function App() {
         <div className="flex items-center gap-2.5">
           <Logo size={30} />
           <span className="text-lg font-semibold tracking-tight text-white">Glorisk</span>
-          <span className="hidden text-[11px] text-neutral-500 md:block">country risk from open data</span>
+          <span className="hidden text-[11px] text-neutral-500 md:block">{copy.app.tagline}</span>
         </div>
 
         <div className="ml-auto flex items-center gap-1 sm:gap-3">
@@ -138,12 +142,12 @@ export default function App() {
             onClick={() => openView('findings')}
             className="rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-neutral-300 transition hover:border-white/25 hover:bg-white/5 hover:text-white"
           >
-            Findings
+            {copy.app.findings}
           </button>
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
-            aria-label="Search countries"
+            aria-label={copy.app.searchCountries}
             className="rounded-lg p-2 text-neutral-400 transition hover:bg-white/10 hover:text-white"
           >
             <Search size={18} />
@@ -151,8 +155,8 @@ export default function App() {
           <button
             type="button"
             onClick={() => setBasemap((current) => (current === 'dark' ? 'satellite' : 'dark'))}
-            aria-label={`Switch to ${basemap === 'dark' ? 'satellite' : 'dark'} basemap`}
-            title={`Basemap: ${basemap}`}
+            aria-label={copy.app.switchBasemap(basemap === 'dark' ? copy.app.satellite : copy.app.dark)}
+            title={copy.app.basemap(basemap === 'dark' ? copy.app.dark : copy.app.satellite)}
             className="rounded-lg p-2 text-neutral-400 transition hover:bg-white/10 hover:text-white"
           >
             <Layers size={18} />
@@ -160,7 +164,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => setRankingOpen(true)}
-            aria-label="Open ranking"
+            aria-label={copy.app.openRanking}
             className="rounded-lg p-2 text-neutral-400 transition hover:bg-white/10 hover:text-white lg:hidden"
           >
             <List size={18} />
@@ -168,7 +172,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => openView('method')}
-            aria-label="How the score is built"
+            aria-label={copy.app.methodology}
             className="rounded-lg p-2 text-neutral-400 transition hover:bg-white/10 hover:text-white"
           >
             <Info size={18} />
@@ -245,10 +249,10 @@ export default function App() {
 
       <p className="sr-only" aria-live="polite">
         {selected && selected.score !== null
-          ? `${selected.name}, composite risk ${Math.round(selected.score)} out of 100`
-          : 'No country selected'}
+          ? copy.app.selectedRisk(countryName(selected), Math.round(selected.score))
+          : copy.app.noCountry}
       </p>
-      <span className="sr-only">Data generated {formatDate(generatedAt)}</span>
+        <span className="sr-only">{copy.app.generated} {formatDate(generatedAt, locale)}</span>
     </div>
   );
 }
