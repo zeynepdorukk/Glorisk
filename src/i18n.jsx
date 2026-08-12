@@ -96,6 +96,7 @@ const COPY = {
     legend: {
       score: 'Risk score', scored: (scored, total) => `${scored}/${total} scored`, filter: 'Filter countries by risk band',
       title: (label, range) => `${label} (score ${range})`, note: 'Bands are global quintiles of the current blend.', clear: 'Clear filter',
+      shortBands: { 'very-low': 'Bottom', low: 'Low', medium: 'Mid', high: 'High', critical: 'Top' },
     },
     search: {
       dialog: 'Search countries', placeholder: 'Search a country…', input: 'Search a country', close: 'Close search',
@@ -193,6 +194,7 @@ const COPY = {
     legend: {
       score: 'Risk puanı', scored: (scored, total) => `${scored}/${total} puanlandı`, filter: 'Ülkeleri risk bandına göre filtrele',
       title: (label, range) => `${label} (puan ${range})`, note: 'Bantlar, mevcut karışımın küresel beşlik dilimleridir.', clear: 'Filtreyi temizle',
+      shortBands: { 'very-low': 'Alt %20', low: 'Düşük', medium: 'Orta', high: 'Yüksek', critical: 'Üst %20' },
     },
     search: {
       dialog: 'Ülke ara', placeholder: 'Bir ülke ara…', input: 'Bir ülke ara', close: 'Aramayı kapat',
