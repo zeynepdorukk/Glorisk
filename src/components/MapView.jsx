@@ -5,13 +5,14 @@ import { useI18n } from '../i18n.jsx';
 
 const BASEMAPS = {
   dark: {
-    url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
-    labels: 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    // Esri's dark-gray canvas, base + reference: keyless, unlike CARTO's
+    // basemaps which now watermark every tile without an API key.
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    labels: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
   },
   satellite: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    labels: 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',
+    labels: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
   },
 };
@@ -119,7 +120,7 @@ export default function MapView({ geometry, byId, selectedId, bandFilter, basema
   const tiles = BASEMAPS[basemap] ?? BASEMAPS.dark;
   const attribution = basemap === 'satellite'
     ? `${copy.map.tiles} &copy; Esri &mdash; ${copy.map.source}: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community`
-    : tiles.attribution;
+    : `${copy.map.tiles} &copy; Esri &mdash; ${copy.map.source}: Esri, HERE, Garmin, OpenStreetMap contributors, and the GIS User Community`;
 
   return (
     <MapContainer

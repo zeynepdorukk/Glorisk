@@ -208,7 +208,7 @@ half-empty map.
   reopening a panel.
 - `Ctrl`/`Cmd` + `K` or `/` opens a command palette; prefix matches rank above
   substring matches, so "turk" finds Türkiye before Turkmenistan.
-- The choropleth sits on a CARTO dark basemap with place labels in a **pane above
+- The choropleth sits on Esri's dark-gray canvas basemap with place labels in a **pane above
   the fill**, so country names stay readable at 75% opacity.
 - The GeoJSON layer is created once and restyled in place. Re-mounting 180
   polygons on every hover, as the first version did, is why it used to stutter.
@@ -285,7 +285,7 @@ always there.
 - [World Bank Open Data](https://data.worldbank.org) — macro-economic indicators
 - [Worldwide Governance Indicators](https://www.worldbank.org/en/publication/worldwide-governance-indicators) — governance scores, regions, income groups
 - [V-Dem](https://ourworldindata.org/grapher/rule-of-law-index) and [UCDP](https://ourworldindata.org/grapher/death-rate-in-armed-conflicts), via Our World in Data — external validation only, never part of the score
-- Basemap tiles © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, © [CARTO](https://carto.com/attributions)
+- Basemap tiles © [Esri](https://www.esri.com) — Esri, HERE, Garmin, OpenStreetMap contributors, and the GIS User Community
 - Flags from [flagcdn.com](https://flagcdn.com)
 
 ## Literature
